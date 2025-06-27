@@ -5,13 +5,12 @@ Here's an ASCII flowchart showing the general flow:
 
 ```
 ┌──────────────────────┐
-│ alert_initiator_*    │  ← Scripts or automations
-│ (e.g. fire, tornado) │
+│ alert_initiator_*    │  ← User/system script (e.g. fire, AQI)
 └────────┬─────────────┘
          │
          ▼
 ┌────────────────────────────────────────────┐
-│ Set:                                      │
+│ Set alert state helpers:                  │
 │   input_select.alert_state_color          │
 │   input_text.alert_state_reason           │
 └────────┬───────────────────────────────────┘
@@ -19,57 +18,56 @@ Here's an ASCII flowchart showing the general flow:
          ▼
 ┌────────────────────────────────────────────┐
 │ Alert Master Processor (AMP) Automation    │
-│ Trigger: state change to alert_* helpers   │
+│ Trigger: alert_state_color or reason change│
 └────────┬───────────────────────────────────┘
          │
          ▼
-  ┌──────────────────────────────┐
-  │ scene.create                 │
-  │ (pre_alert_lighting_state)  │
-  └────────┬────────────────────┘
-           │
-           ▼
-     ┌──────────────┐
-     │ Lighting     │──────┐
-     │ Effects:     │      │
-     │   script.alert_effect_light_color_* │
-     └──────────────┘      │
-                           ▼
-                     ┌──────────────┐
-                     │ Screen       │
-                     │ Effects:     │
-                     │   script.alert_effect_screen_color_* │
-                     └──────────────┘
-                           ▼
-                     ┌──────────────┐
-                     │ Audio Alerts │
-                     │   script.alert_audio_reason_*       │
-                     └──────────────┘
+┌──────────────────────────────┐
+│ Create scene.snapshot        │
+│   (scene.pre_alert_lighting) │
+└────────┬─────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────┐
+│       Alert State Effects          │
+└────────────┬────────────┬─────────┘
+             │            │
+             ▼            ▼
+   ┌────────────────┐  ┌────────────────┐
+   │ Lighting Effect │  │ Screen Effect  │
+   │   via:          │  │   via:         │
+   │ script.alert_   │  │ script.alert_  │
+   │   effect_light  │  │   effect_screen│
+   └────────────────┘  └────────────────┘
+             │
+             ▼
+   ┌────────────────────────────────────┐
+   │ Audio Alert (inline in AMP)        │
+   │  - Based on input_text.alert_state_reason │
+   │  - Plays appropriate audio clip    │
+   └────────────────────────────────────┘
 
    [ Meanwhile… ]
 
 ┌────────────────────────────┐
-│ alert_resolver_* scripts   │  ← User/manual/system triggered
+│ alert_resolver_* scripts   │  ← User/system-triggered
 └────────┬───────────────────┘
          ▼
-┌────────────────────────────┐
-│ Set alert state to "none": │
-│   input_select.alert_state_color = none     │
-│   input_text.alert_state_reason = ""        │
-└────────┬───────────────────┘
-         │
+┌──────────────────────────────────────────────┐
+│ Reset alert state:                           │
+│   input_select.alert_state_color = "none"    │
+│   input_text.alert_state_reason = "none"     │
+└────────┬─────────────────────────────────────┘
          ▼
-  ┌──────────────────────────────────────────────┐
-  │ AMP automation detects reset to "none"       │
-  └────────┬─────────────────────────────────────┘
-           ▼
-  ┌──────────────────────────────────────────────┐
-  │ script.alert_effect_light_color_resolver     │
-  │ - turn off alert light scripts               │
-  │ - repeat loop to confirm shutdown            │
-  │ - log failure if needed                      │
-  │ - restore pre-alert lighting scene           │
-  └──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│ AMP detects reset state                      │
+│ → Runs script.alert_effect_light_color_resolver│
+│   - Turn off light effect scripts            │
+│   - Wait until confirmed off or timeout      │
+│   - Restore scene.pre_alert_lighting_state   │
+│   - Log failure if unresolved after timeout  │
+└──────────────────────────────────────────────┘
+
 ```
 
 alert_state_color is an "input select" helper with four possible states, none, red, yellow, and blue. alert_state_reason has every possible reason for every possible alert:
