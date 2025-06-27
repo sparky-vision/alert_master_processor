@@ -3,6 +3,7 @@ This is how I do my alerts in Home Assistant with an LCARS twist.
 
 Here's an ASCII flowchart showing the general flow:
 
+```
 ┌──────────────────────┐
 │ alert_initiator_*    │  ← Scripts or automations
 │ (e.g. fire, tornado) │
@@ -69,3 +70,4 @@ Here's an ASCII flowchart showing the general flow:
   │ - log failure if needed                      │
   │ - restore pre-alert lighting scene           │
   └──────────────────────────────────────────────┘
+```
